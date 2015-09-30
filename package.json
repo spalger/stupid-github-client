@@ -5,8 +5,7 @@
   "main": "lib/index.js",
   "scripts": {
     "test": "mocha test",
-    "prepublish": "rm -rf lib && babel -d lib src",
-    "dev": "rm -rf lib && babel -d lib -D -w src"
+    "prepublish": "rm -rf lib && babel -d lib src"
   },
   "keywords": [
     "github"
@@ -27,5 +26,16 @@
     "bluebird": "^2.10.1",
     "lodash": "^3.10.1",
     "superagent": "^1.4.0"
-  }
+  },
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spalger/stupid-github-client.git"
+  },
+  "bugs": {
+    "url": "https://github.com/spalger/stupid-github-client/issues"
+  },
+  "homepage": "https://github.com/spalger/stupid-github-client#readme"
 }
