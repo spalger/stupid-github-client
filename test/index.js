@@ -1,5 +1,9 @@
-import { factory } from '../src/index';
+import chai from 'chai';
 import nock from 'nock';
+
+chai.should();
+
+import { factory } from '../src/index';
 
 describe('@spalger/github-client', function() {
   describe('factory()', function() {

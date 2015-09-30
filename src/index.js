@@ -1,7 +1,10 @@
-import { assign, isArray } from 'lodash';
 import request from 'superagent';
-import { resolve, fromNode } from 'bluebird';
 import { resolve as resolveUrl } from 'url';
+import fromNode from '@spalger/fromnode';
+
+const { assign } = Object;
+const { isArray } = Array;
+const resolve = () => new Promise(res => res());
 
 export class FailedResp extends Error {
   constructor(req, resp) {
@@ -10,6 +13,7 @@ export class FailedResp extends Error {
     this.resp = resp;
   }
 }
+
 
 export class NeedsLogin extends FailedResp {}
 export class NeedsPermission extends FailedResp {}
