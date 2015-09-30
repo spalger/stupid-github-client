@@ -1,6 +1,6 @@
 {
   "name": "@spalger/stupid-github-client",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "yet another simple github wrapper",
   "main": "lib/index.js",
   "scripts": {
