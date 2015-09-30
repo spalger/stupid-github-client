@@ -9,12 +9,12 @@ describe('@spalger/github-client', function() {
   describe('factory()', function() {
     it('allows creating a base client with specific defaults, etc.', function() {
       const client = factory({
-        apiUrl: 'nonsense',
+        apiUrl: 'http://some.farm/github-api',
         apiToken: 'also nonsense',
         cacheBust: true,
         defaults: {
           method: 'post',
-          url: 'not the apiUrl',
+          path: '/me',
           query: {
             spencer: true,
           },
@@ -23,7 +23,7 @@ describe('@spalger/github-client', function() {
 
       client.params.should.eql({
         method: 'post',
-        url: 'not the apiUrl',
+        path: '/me',
         query: {
           spencer: true,
         },
@@ -31,20 +31,21 @@ describe('@spalger/github-client', function() {
 
       const req = client._getReq();
       req.method.should.equal('post');
-      req.url.should.equal('not the apiUrl');
-      req.request().getHeader('authorization').should.equal(`token also nonsense`);
+      req.url.split('?').shift().should.equal('/me');
+      req.options.baseUrl.should.equal('http://some.farm/github-api');
+      req.options.headers.authorization.should.equal(`token also nonsense`);
     });
   });
 
   describe('Client/Request class', function() {
     it('creates a new client for after each modification', function() {
-      const apiUrl = 'http://apiurl.com';
+      const apiUrl = 'http://apiurl.com/';
       const client = factory({ apiUrl });
       const client2 = client.path('/me');
 
       client.should.not.equal(client2);
-      client._getReq().url.should.equal(apiUrl);
-      client2._getReq().url.should.equal(apiUrl + '/me');
+      client._getReq().url.should.equal('');
+      client2._getReq().url.should.equal('/me');
     });
 
     describe('#once()', function() {
@@ -96,6 +97,19 @@ describe('@spalger/github-client', function() {
     });
 
     describe('#send()', function() {
+      it('accepts apiUrls with paths', async function() {
+        const apiHost = 'http://apiurl.com';
+        const apiUrl = apiHost + '/github-api';
+
+        nock(apiHost)
+          .get('/github-api/me')
+          .reply(200, { me: true });
+
+        const client = factory({ apiUrl }).path('/me');
+        const { body } = await client.send();
+        body.should.eql({ me: true });
+      });
+
       it('accepts param overrides', async function() {
         const apiUrl = 'http://apiurl.com';
 
@@ -112,8 +126,26 @@ describe('@spalger/github-client', function() {
         const { body: body1 } = await client.send();
         body1.should.eql({ me: true });
 
-        const { body: body2 } = await client.send({ url: apiUrl + '/you' });
+        const { body: body2 } = await client.send({ path: '/you' });
         body2.should.eql({ you: true });
+      });
+
+      it('responds with non-200 response codes', async function() {
+        const apiUrl = 'http://apiurl.com';
+
+        nock(apiUrl)
+          .get('/')
+          .reply(304, { 'Not Modified': true });
+
+        const client = factory({ apiUrl });
+        const { status, headers, body } = await client.send();
+        status.should.equal(304);
+        headers.should.eql({
+          'content-type': 'application/json',
+        });
+        body.should.eql({
+          'Not Modified': true,
+        });
       });
     });
   });

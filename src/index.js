@@ -1,5 +1,5 @@
-import request from 'superagent';
-import { resolve as resolveUrl } from 'url';
+import Wreck from 'wreck';
+import { format, parse, resolve as resolveUrl } from 'url';
 import fromNode from '@spalger/fromnode';
 
 const { assign } = Object;
@@ -26,7 +26,6 @@ export function factory({
   execChains = new WeakMap(),
   defaults = {
     method: 'get',
-    url: apiUrl,
   },
 }) {
   class Request {
@@ -67,38 +66,36 @@ export function factory({
 
     path(path) {
       const segs = isArray(path) ? path : path.split('/').filter(Boolean);
-      const url = resolveUrl(apiUrl, `/${segs.map(encodeURIComponent).join('/')}`);
-      return this._fork({ url });
+      return this._fork({
+        path: `/${segs.map(encodeURIComponent).join('/')}`,
+      });
     }
 
     _fork(params) {
       return new Request(params, this);
     }
 
-    _getReq({url, method, query, body, authorize, headers} = this.params) {
-      const req = request(method, url);
-
+    _getReq({path, method, query, body, authorize, headers} = this.params) {
+      // request url
+      const parsed = parse(path || '');
+      parsed.query = query || parsed.query || {};
       if (cacheBust) {
-        req.query(assign({ ts: Date.now() }, query));
-      } else if (query) {
-        req.query(query);
+        parsed.query = assign({ ts: Date.now() }, parsed.query);
+      }
+      const url = format(parsed);
+
+      const options = {
+        baseUrl: apiUrl,
+        payload: body,
+        headers: headers || {},
+      };
+
+      // request headers
+      if (authorize !== false && apiToken) {
+        options.headers = assign({ authorization: `token ${apiToken}` }, options.headers);
       }
 
-      if (body) {
-        req.send(body);
-      }
-
-      if (authorize !== false) {
-        if (apiToken) req.set('authorization', `token ${apiToken}`);
-      }
-
-      if (headers) {
-        Object.keys(headers).forEach(key => {
-          req.set(key, headers[key]);
-        });
-      }
-
-      return req;
+      return { method, url, options };
     }
 
     then(...args) {
@@ -116,14 +113,24 @@ export function factory({
         resolve(execChains.get(this))
         .then(async () => {
           const req = this._getReq(params);
-          const resp = await fromNode(cb => req.end(cb));
 
-          if (!resp || resp.status >= 300 || resp.status < 200) {
+          const resp = await fromNode(cb => {
+            Wreck.request(req.method, req.url, req.options, cb);
+          });
+
+          const body = await fromNode(cb => {
+            Wreck.read(resp, { json: true }, cb);
+          });
+
+          if (!resp) {
             throw new InvalidResponse(req, resp);
           }
 
-          const { body, status, headers, ok, type, text } = resp;
-          return { body, status, headers, ok, type, text };
+          return {
+            body,
+            status: resp.statusCode,
+            headers: resp.headers,
+          };
         })
       ));
 

@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@spalger/fromnode": "^1.0.0",
-    "superagent": "^1.4.0"
+    "wreck": "^6.3.0"
   },
   "directories": {
     "test": "test"
