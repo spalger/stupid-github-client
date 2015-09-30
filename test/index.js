@@ -94,5 +94,27 @@ describe('@spalger/github-client', function() {
         });
       });
     });
+
+    describe('#send()', function() {
+      it('accepts param overrides', async function() {
+        const apiUrl = 'http://apiurl.com';
+
+        nock(apiUrl)
+          .get('/me')
+          .once()
+          .reply(200, { me: true })
+          .get('/you')
+          .once()
+          .reply(200, { you: true });
+
+        const client = factory({ apiUrl }).path('/me');
+
+        const { body: body1 } = await client.send();
+        body1.should.eql({ me: true });
+
+        const { body: body2 } = await client.send({ url: apiUrl + '/you' });
+        body2.should.eql({ you: true });
+      });
+    });
   });
 });

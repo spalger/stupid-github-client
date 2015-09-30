@@ -51,6 +51,10 @@ export function factory({
       return this._fork({ authorize });
     }
 
+    headers(headers) {
+      return this._fork({ headers });
+    }
+
     once(once = true) {
       return this._fork({ once });
     }
@@ -71,8 +75,7 @@ export function factory({
       return new Request(params, this);
     }
 
-    _getReq() {
-      const {url, method, query, body, authorize} = this.params;
+    _getReq({url, method, query, body, authorize, headers} = this.params) {
       const req = request(method, url);
 
       if (cacheBust) {
@@ -89,6 +92,12 @@ export function factory({
         if (apiToken) req.set('authorization', `token ${apiToken}`);
       }
 
+      if (headers) {
+        Object.keys(headers).forEach(key => {
+          req.set(key, headers[key]);
+        });
+      }
+
       return req;
     }
 
@@ -96,7 +105,9 @@ export function factory({
       return this.send().then(...args);
     }
 
-    send() {
+    send(overrides) {
+      const params = overrides ? assign({}, this.params, overrides) : this.params;
+
       if (this.params.once && execChains.has(this)) {
         return execChains.get(this);
       }
@@ -104,7 +115,7 @@ export function factory({
       execChains.set(this, (
         resolve(execChains.get(this))
         .then(async () => {
-          const req = this._getReq();
+          const req = this._getReq(params);
           const resp = await fromNode(cb => req.end(cb));
 
           if (!resp || resp.status >= 300 || resp.status < 200) {
